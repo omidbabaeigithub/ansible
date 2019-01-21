@@ -1,0 +1,17 @@
+---
+- hosts: '{{ hostname }}'
+  become: yes
+#  gather_facts: False
+#  gather_subset:
+#    - facter
+#    - network
+#    - hardware
+#    - virtual
+#    - ohai
+  vars_files:
+    - ./group_vars/vars.yml
+  roles:
+    - add-facts
+    - set-syslog
+  handlers:
+    - include: handler/main.yml

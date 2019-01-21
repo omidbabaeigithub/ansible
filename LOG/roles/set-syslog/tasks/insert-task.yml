@@ -1,0 +1,17 @@
+---
+- name: insert test to 20-weblogic.conf
+  blockinfile:
+    path: /etc/rsyslog.d/20-weblogic.conf
+    block: |
+      $InputFileName  {{ item.DOMAINS_PATH }}/{{ item.DOMAIN_NAME }}/servers/{{ item.SERVER_NAME }}/logs/{{ item.LOG_NAME }}.log
+      $InputFileTag {{ item.LOG_NAME }}-out
+      $InputFileStateFile stat-{{ item.LOG_NAME }}-out
+      $InputFileSeverity info
+      $InputFilePersistStateInterval 20000
+      $InputRunFileMonitor
+      if $programname == '{{ item.LOG_NAME }}-out' then @@{{ item.LOGGER_ADDR }};templateFormat
+      if $programname == '{{ item.LOG_NAME }}-out' then ~
+    marker: "# {marker} ANSIBLE MANAGED BLOCK {{ item.LOG_NAME }} "
+  with_items:
+      - "{{ ansible_local['custom']['variables']['params'] }}"
+

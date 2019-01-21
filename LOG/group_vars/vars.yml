@@ -1,0 +1,3 @@
+share:
+  params:
+    - LOGGER_ADDR: 172.25.67.181:514 

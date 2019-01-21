@@ -1,0 +1,33 @@
+---
+- name: Insert to rsyslog.conf
+  blockinfile:
+    path: /etc/rsyslog.conf
+    backup: yes
+    block: |
+      $LocalHostName {{ ansible_nodename }}
+      $PreserveFQDN on
+      authpriv.* @@{{ item.LOGGER_ADDR }}
+  with_items:  
+      - "{{  share['params'] }}"
+  tags: update_conf
+  
+- name: create 20-weblogic.conf
+  file:
+    path: /etc/rsyslog.d/20-weblogic.conf
+    state: touch
+  tags: create_conf
+
+- import_tasks: insert-task.yml
+  notify:
+    - Restart Rsyslog 7
+    - Enable Rsyslog 7
+  when: ansible_distribution_major_version == "7" and ansible_distribution == "OracleLinux"
+  tags: create_conf
+
+- import_tasks: insert-task.yml
+  notify:
+    - Restart Rsyslog 6
+    - Enable Rsyslog 6
+  when: ansible_distribution_major_version == "6" and ansible_distribution == "OracleLinux"
+  tags: create_conf
+

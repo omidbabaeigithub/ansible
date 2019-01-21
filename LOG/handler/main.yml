@@ -1,0 +1,21 @@
+---
+- name: Restart Rsyslog 6
+  service:
+    name: rsyslog
+    state: restarted
+
+- name: Restart Rsyslog 7
+  systemd:
+    name: rsyslog
+    state: restarted
+    daemon_reload: yes
+
+- name: Enable Rsyslog 6
+  service:
+    name: rsyslog
+    enabled: yes
+
+- name: Enable Rsyslog 7
+  systemd:
+    name: rsyslog
+    enabled: yes

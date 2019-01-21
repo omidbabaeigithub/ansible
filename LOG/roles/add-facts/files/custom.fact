@@ -1,0 +1,22 @@
+#!/bin/bash
+
+DOMAINS_PATH='/u01/oracle/Middleware/user_projects/domains'
+DOMAIN_NAME=$(ls $DOMAINS_PATH)
+SERVERS_NAME=($(ls $DOMAINS_PATH/$DOMAIN_NAME/servers | grep -v bak | grep -v Tag))
+
+echo -n "{\"variables\":{\"params\":["
+
+num=${#SERVERS_NAME[@]}
+((num--))
+cnt=0
+
+for server in ${SERVERS_NAME[@]}
+do
+  echo -n "{\"LOGGER_ADDR\":\"172.25.67.181:514\",\"DOMAINS_PATH\":\"$DOMAINS_PATH\",\"DOMAIN_NAME\":\"$DOMAIN_NAME\",\"SERVER_NAME\":\"$server\",\"LOG_NAME\":\"$server\"}"
+  if [[ ! $cnt -eq $num ]]; then
+        echo  -n ","
+  fi
+  ((cnt++))
+done
+
+echo "]}}"
