@@ -1,0 +1,29 @@
+#!/bin/bash
+
+DOMAINS_PATH='/u01/oracle/Middleware/user_projects/domains'
+DOMAINS_NAME=($(ls $DOMAINS_PATH))
+
+echo -n "{\"variables\":{\"params\":["
+
+numdomain=${#DOMAINS_NAME[@]}
+((numdomain--))
+cntdomain=0
+for domain in ${DOMAINS_NAME[@]}
+do
+        SERVERS_NAME=($(ls $DOMAINS_PATH/$domain/servers | grep -v bak | grep -v Tag))
+        numserver=${#SERVERS_NAME[@]}
+        ((numserver--))
+        cntserver=0
+
+        for server in ${SERVERS_NAME[@]}
+        do
+          echo -n "{\"LOGGER_ADDR\":\"172.25.67.181:514\",\"DOMAINS_PATH\":\"$DOMAINS_PATH\",\"DOMAIN_NAME\":\"$domain\",\"SERVER_NAME\":\"$server\",\"LOG_NAME\":\"$server\"}"
+          if [[ (! $cntserver -eq $numserver) || (! $cntdomain -eq $numdomain) ]]; then
+                echo  -n ","
+          fi
+          ((cntserver++))
+        done
+        ((cntdomain++))
+done
+
+echo "]}}"

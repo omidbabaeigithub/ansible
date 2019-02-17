@@ -1,0 +1,245 @@
+---
+- hosts: '{{hostname}}'
+  become: yes
+
+  tasks:
+
+  ##### Add Partition #####
+  - name: format disk
+    shell: echo -e "n\np\n1\n\n\nt\n8e\nw\n" | fdisk /dev/sdb
+    tags: partition
+
+  - name: initialize partition for use by LVM
+    shell: pvcreate /dev/sdb1
+    tags: partition
+ 
+  - name: add physical volume to volume group
+    shell: vgextend vg00 /dev/sdb1
+    tags: partition
+ 
+  - name: add space to a logical volume
+    shell: lvextend -l +100%FREE /dev/mapper/vg00-lv_u01
+    tags: partition 
+
+  - name: expand an XFS filesystem
+    shell: xfs_growfs /dev/mapper/vg00-lv_u01
+    tags: partition
+  
+  ##### Append Hosts #####
+  - name: Append a host to end of file
+    blockinfile:
+      path: /etc/hosts
+      block: |
+        # Yum Repository
+        172.25.68.50    yum.msc.ir
+        # Load Balancer
+        172.25.68.50    eis.msc.ir
+        172.25.68.50    ecm.msc.ir
+        172.25.67.65    ecmidc.msc.ir
+        172.25.67.71    filestore.msc.ir
+        172.25.67.68    idstoredev.msc.ir
+      backup: yes
+    tags: hosts
+
+  ##### Chronyd Service #####
+  - name: copy conf file into /etc
+    copy:
+      src: /home/oracle/ansible/files/chrony.conf
+      dest: /etc/
+    tags: chronyd
+
+  - name: enable chronyd service
+    shell: systemctl enable chronyd
+    tags: chronyd
+
+  - name: restart chronyd service
+    shell: systemctl restart chronyd
+    tags: chronyd
+
+  - name: check if chrony is synchronized
+    shell: chronyc tracking
+    tags: chronyd
+ 
+  ##### Tuned Service  #####
+  - name: enable tuned service
+    shell: sudo systemctl enable tuned.service
+    tags: tuned 
+
+#  - name: copy tuned conf into servers
+#    copy:
+#      src: /usr/lib/tuned/oracle/tuned.conf
+#      dest: /usr/lib/tuned/oracle/tuned.conf
+#    tags: tuned
+
+#  - name: copy tuned conf into servers
+#    copy:
+#      src: /usr/lib/tuned/virtual-guest/tuned.conf
+#      dest: /usr/lib/tuned/virtual-guest/tuned.conf
+#    tags: tuned
+
+  - name: restart tuned service
+    shell: sudo systemctl restart tuned.service
+    tags: tuned
+
+  ##### Copy Repo #####
+  - name: copy msc.repo to remote servers
+    copy:
+      src: /etc/yum.repos.d/msc.repo
+      dest: /etc/yum.repos.d/msc.repo
+    tags: copy_repo
+  
+  ##### Copy Toprc #####
+  - name: copy toprc file into remote servers
+    copy:
+      src: /u01/sources/.toprc
+      dest: /home/oracle/.toprc
+    tags: copy_toprc
+
+  ##### Copy Vimrc #####
+  - name: copy vimrc file into remote servers
+    copy:
+      src: /u01/sources/.vimrc
+      dest: /home/oracle/.vimrc
+    tags: copy_vimrc
+
+  ##### Copy Hosts #####
+  - name: copy host file into remote servers
+    copy:
+      src: /etc/hosts
+      dest: /etc/hosts
+      backup: yes
+    become: yes
+    tags: copy_hosts
+    
+  ##### WLS Patch #####
+  - name: copy wls patch into remote servers
+    copy:
+      src: /u01/sources/WLS_PATCHES
+      dest: /u01/sources/
+    tags: wls_patch
+  
+#  - name: append oracle and opatch home to profile
+#    blockinfile:
+#      path: /home/oracle/.bash_profile
+#      block: |
+#        export ORACLE_HOME=/u01/oracle/products/12.2.1.3/oracle_home
+#        export OPATCH_HOME=/u01/oracle/products/12.2.1.3/oracle_home
+#      backup: yes
+#    tags: wls_patch
+
+#  - name: reload .bash_profile 
+#    shell: source ~/.bash_profile
+#    tags: wls_patch
+   
+  - name: change permission
+    command: chmod +x /u01/sources/WLS_PATCHES/setPatches.sh
+    tags: wls_patch 
+ 
+  - name: run patch
+    shell: yes | /u01/sources/WLS_PATCHES/setPatches.sh
+    environment:
+      ORACLE_HOME: /u01/oracle/products/12.2.1.3/oracle_home
+      OPATCH_HOME: /u01/oracle/products/12.2.1.3/oracle_home    
+    register: output
+    tags: wls_patch
+ 
+  - debug: msg={{output.stdout_lines}}
+    tags: wls_patch
+
+  ##### SNMP Config #####
+  - name: Clean YUM
+    command: yum clean all
+    tags: snmp 
+
+  - name: Ignore YUM Repository 
+    command: yum-config-manager --save --setopt=ol7_latest.skip_if_unavailable=true
+    tags: snmp
+
+  - name: Install SNMP Packages
+    command: yum install net-snmp net-snmp-libs net-snmp-utils -y
+    tags: snmp
+
+  - name: Start SNMP Service  
+    command: systemctl start snmpd.service
+    tags: snmp
+
+  - name: Copy snmpd.conf 
+    copy: 
+      src: /home/oracle/ansible/files/snmpd.conf
+      dest: /etc/snmp/snmpd.conf
+      backup: yes
+    tags: snmp
+  
+  - name: Reload SNMP Service
+    command: systemctl reload snmpd.service
+    tags: snmp                          
+
+  - name: Enable SNMP Service
+    command: systemctl enable snmpd.service
+    tags: snmp
+
+  - name: Getting System Inf.
+    command: snmpwalk -v2c -c public localhost system
+    register: snmpwalk_result
+    tags: snmp
+
+  - name: Show snmpwalk Output
+    debug: msg={{snmpwalk_result.stdout_lines}}
+    tags: snmp
+
+  ##### Issue ISS2 #####
+  - name: Copy issue.iss2
+    copy:
+      src: /home/oracle/ansible/files/issue.iss2
+      dest: /etc/issue.iss2
+    tags: issue
+
+  - name: Copy iss2.sh 
+    copy:
+      src: /home/oracle/ansible/files/iss2.sh  
+      dest: /etc/profile.d/iss2.sh
+    tags: issue
+
+  ##### OS Version #####
+  - name: Show OS Version 
+    command: sed -n '2p' /etc/os-release
+    register: os_result
+    tags: os_version
+
+  - name: Show Result
+    debug: msg={{os_result.stdout_lines}}
+    tags: os_version
+
+  ##### Linux Upgrade ##### 
+  - name: Clean All
+    command: yum clean all
+    register: clean_result    
+    tags: upgrade
+ 
+  - name: Show Result
+    debug: msg={{clean_result.stdout_lines}}
+    tags: upgrade
+
+  - name: Upgrade
+    shell: echo 'y' | yum upgrade 
+    register: upgrade_result    
+    tags: upgrade   
+
+  - name: Show Result
+    debug: msg={{upgrade_result.stdout_lines}}
+    tags: upgrade
+
+  ##### Change TimeZone #####
+  - name: Change TimeZone File
+    command: sudo ln -sf /usr/share/zoneinfo/Asia/Tehran /etc/localtime
+    tags: timezone    
+
+  - name: Show TimeZone
+    shell: timedatectl | grep "Time zone"
+    register: timezone_result
+    tags: timezone
+
+  - name: Show Result
+    debug: msg={{timezone_result.stdout_lines}}
+    tags: timezone
+

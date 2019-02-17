@@ -1,0 +1,63 @@
+##### Colors Definition #####
+NO='\033[00m'
+RED='\033[01;31m'
+GREEN='\033[01;32m'
+YELLOW='\033[01;33m'
+PURPLE='\033[01;35m'
+CYAN='\033[01;36m'
+WHITE='\033[01;37m'
+BOLD='\033[1m'
+UL='\033[4m'
+
+clear
+
+##### Header #####
+echo -n "+" ; printf '%.0s-' {1..71} ; echo "+"
+echo -e "|\t\t\t IRISA-IT-Middleware \t\t\t\t|"
+
+##### Hostname Analysis #####
+HOSTNAME="$(hostname)"
+ENV=${HOSTNAME:6:1}
+PRODUCT=${HOSTNAME:7:3}
+NODENUM=${HOSTNAME:11:1}
+
+if [[ $ENV == "p" ]]; then
+	ENV_TYPE="Production"
+elif [[ $ENV == "d" ]]; then
+	ENV_TYPE="Development"
+fi
+
+##### Exception for OAAM #####
+if [[ $PRODUCT == "oaa" ]]; then
+	echo -e "|\t\t Oracle ${RED}OAAM ${YELLOW}$ENV_TYPE ${NO}Server Node ${GREEN}${HOSTNAME:12:1}${NO} \t\t\t|"
+else
+	echo -e "|\t\t Oracle ${RED}${PRODUCT^^} ${YELLOW}$ENV_TYPE ${NO}Server Node ${GREEN}$NODENUM${NO} \t\t\t|"
+fi
+
+##### IP Address #####
+echo -e "|\t\t\t   ${PURPLE} `hostname -i` ${NO}          \t\t\t|"
+
+##### Caution Message #####
+if [[ $UID -ne 54321 ]]; then
+	echo -e "| Important:\t\t\t\t\t\t\t\t|"
+	echo -e "|  - ${UL}For any action on ${GREEN}ORACLE${NO}${UL} products login to ${RED}oracle${NO}${UL} account.${NO}\t\t|"
+fi
+
+##### Footer #####
+echo -n "+" ; printf '%.0s-' {1..71} ; echo "+"
+echo -n "+" ; printf '%.0s-' {1..71} ; echo "+"
+echo -e "| `hostname`\t\t\t\t\t\t|"
+echo -e "| `uname -r`\t\t\t\t\t\t|"
+echo -e "| `uptime -p`\t\t\t\t|"
+echo -e "| ${GREEN}`vmstat -s | grep "total memory"`${NO}\t\t\t\t\t\t|"
+echo -e "| ${RED}`vmstat -s | grep "used memory"`${NO}\t\t\t\t\t\t|"
+echo -e "| ${YELLOW}`vmstat -s | grep "inactive memory"`${NO}\t\t\t\t\t|"
+echo -e "| ${PURPLE}`vmstat -s | grep "total swap"`${NO}\t\t\t\t\t\t|"
+echo -e "| ${CYAN}`vmstat -s | grep "free swap"`${NO}\t\t\t\t\t\t|"
+echo -e "| `vmstat -s | grep "swap cache"`\t\t\t\t\t\t|"
+echo -n "+" ; printf '%.0s-' {1..71} ; echo "+"
+if [[ $UID -ne 0 && $UID -ne 54321 ]]; then
+	echo "Login to oracle user. For cancel login press <CTRL+C>"
+	x=`xauth list | tail -1`
+	sudo -u oracle xauth add $x && sudo -u oracle -i
+fi

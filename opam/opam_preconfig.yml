@@ -1,0 +1,24 @@
+- hosts: "{{hostname}}"
+  become: yes
+  tasks:
+  - name: Comment a Line in sshd_config
+    replace:
+      path: /etc/ssh/sshd_config
+      regexp: "{{ item }}"
+      replace: 'PermitRootLogin yes'
+      backup: yes
+    with_items:
+      - '#PermitRootLogin no'
+      - 'PermitRootLogin no'
+
+  - name: Restart sshd 
+    command: systemctl restart sshd
+
+  - name: Add opam_service Account
+    command: useradd -d /home/opam_service -m -g root -G bin,daemon,sys,adm,disk,wheel -o -u 0 opam_service
+
+  - name: Change opam_service Password  
+    shell: echo -e "{{opam_pass}}\n{{opam_pass}}\n" | sudo passwd opam_service
+    
+
+

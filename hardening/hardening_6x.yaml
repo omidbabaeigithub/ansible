@@ -1,0 +1,422 @@
+--- 
+- hosts: '{{host_name}}'
+  become: yes 
+  tasks:
+
+  ##########     Update Repository       #########
+#  - name: append a host 
+#    blockinfile:
+#      path: /etc/hosts
+#      block: |
+#        # Yum Repository
+#        172.25.68.50    yum.msc.ir
+#        # Load Balancer
+#        172.25.68.50    eis.msc.ir
+#        172.25.68.50    ecm.msc.ir
+#        172.25.67.65    ecmidc.msc.ir
+#        172.25.67.71    filestore.msc.ir
+#      backup: yes
+#    tags: repo 
+#
+#  - name: rename all repo file into org
+#    shell: rename .repo .org /etc/yum.repos.d/*.repo
+#    tags: repo
+#
+#  - name: copy msc.repo to remote servers
+#    copy:
+#      src: /home/oracle/ansible_files/related_files/msc_6x.repo
+#      dest: /etc/yum.repos.d/msc_6x.repo
+#      backup: yes 
+#    tags: repo
+#
+#  - name: ls
+#    shell: ls /etc/yum.repos.d/
+#    register: result
+#    tags: repo
+#
+#  - name: debug
+#    debug: msg={{result.stdout_lines}}
+#    tags: repo
+# 
+#  - name: update repo
+#    command: yum update 
+#    tags: repo
+#
+#  - name: upgrade repo
+#    command: yum upgrade
+#    tags: repo
+#   
+  ##########     Disable Ctrl+Alt+Del     ##########
+  - name: touch a new file
+    file:
+      path: /etc/init/control-alt-delete.override
+      state: touch
+    tags: CtrlAltDel
+
+  - name: add command to file
+    lineinfile:
+      path: /etc/init/control-alt-delete.override
+      line: 'exec /bin/true'
+    tags: CtrlAltDel
+
+  - name: cat cad
+    command: cat /etc/init/control-alt-delete.override
+    register: cad
+    tags: CtrlAltDel
+  
+  - name: show cad 
+    debug: msg={{cad.stdout_lines}}
+    tags: CtrlAltDel
+  
+  - name: reflect new configuration
+    command: initctl reload-configuration control-alt-delete
+    tags: CtrlAltDel
+
+  ##########     Check UID=0     ##########
+  - name: ensure no user have UID=0
+    command: awk -F{{':'}} '($3 == "0"){print}' /etc/passwd
+    register: result
+    tags: uid
+
+  - name: show result
+    debug: msg={{result.stdout_lines}}
+    tags: uid
+
+  ##########     Remove X Window     ##########
+  - name: remove x windows package group
+    shell: yum groupremove "X Window System"
+    register: x_result
+    tags: xwindow
+
+  - name: show result remove x window
+    debug: msg={{x_result.stdout_lines}}
+    tags: xwindow
+
+  ##########    Logwatch Service     ##########
+  - name: install logwatch 
+    shell: yum install logwatch   
+    register: logwatch_result
+    tags: logwatch
+
+  - name: show install logwatch
+    debug: msg={{logwatch_result.stdout_lines}}
+    tags: logwatch
+
+  - name: start rsyslog
+    command: service rsyslog start
+    tags: logwatch
+
+  - name: enable rsyslog
+    command: chkconfig rsyslog on
+    tags: logwatch
+
+  - name: status rsyslog
+    command: service rsyslog status
+    register: rsyslog_result
+    tags: logwatch
+
+  - name: show rsyslog status
+    debug: msg={{rsyslog_result.stdout_lines}}
+    tags: logwatch
+
+  ##########     Psacct Service    ##########
+  - name: install psacct
+    shell: yum install psacct
+    register: psacct_result
+    tags: psacct
+
+  - name: show install psacct
+    debug: msg={{psacct_result.stdout_lines}}
+    tags: psacct
+
+  - name: start psacct
+    command: service psacct start
+    tags: psacct
+
+  - name: enable psacct
+    command: chkconfig psacct on
+    tags: psacct
+
+  - name: status psacct
+    command: service psacct status
+    register: psacct_result
+    tags: psacct
+
+  - name: show psacct status
+    debug: msg={{psacct_result.stdout_lines}}
+    tags: psacct
+
+  ##########     Kernel Parameters     ##########
+  - name: touch a file to set kernel parameters
+    file: 
+      path: /etc/sysctl.d/98-hardening.conf 
+      state: touch
+    tags: kernel
+
+  - name: write into file to set kernel parameters  
+    blockinfile:
+      dest: /etc/sysctl.d/98-hardening.conf
+      block: | 
+        net.ipv4.conf.all.rp_filter=1
+        net.ipv4.conf.all.accept_source_route=0
+        net.ipv4.icmp_echo_ignore_broadcasts=1
+        net.ipv4.icmp_ignore_bogus_error_messages=1
+        kernel.exec-shield=1
+        kernel.randomize_va_space=1
+      backup: yes
+    tags: kernel
+
+  - name: cat kernel file
+    command: cat /etc/sysctl.d/98-hardening.conf
+    register: kernel_result
+    tags: kernel
+
+  - name: show kernel file
+    debug: msg={{kernel_result.stdout_lines}}
+    tags: kernel
+
+  ##########     IpV6     ##########
+  - name: touch the file
+    file:
+      path: /etc/modprobe.d/modprobe.conf
+      state: touch
+    tags: ipv6 
+
+  - name: add lines to network
+    lineinfile:
+      path: "{{item.path}}"
+      regexp: "{{item.regex}}"
+      line: "{{item.line}}" 
+    with_items:
+    - { path: /etc/modprobe.d/modprobe.conf , regex: '^install ipv6'      , line: 'install ipv6 /bin/true' }
+    - { path: /etc/sysconfig/network        , regex: '^NETWORKING_IPV6'   , line: 'NETWORKING_IPV6=no' }
+    - { path: /etc/sysconfig/network        , regex: '^IPV6INIT'          , line: 'IPV6INIT=no' }
+    - { path: /etc/sysctl.conf              , regex: '^net.ipv6.conf.all' , line: 'net.ipv6.conf.all.disable_ipv6=1' }
+    tags: ipv6
+
+  - name: cat modprobe file
+    command: cat /etc/modprobe.d/modprobe.conf
+    register: modprobe
+    tags: ipv6
+
+  - name: show modprobe file
+    debug: msg={{modprobe.stdout_lines}}
+    tags: ipv6
+
+  - name: cat network file
+    command: cat /etc/sysconfig/network
+    register: network
+    tags: ipv6
+
+  - name: show network file
+    debug: msg={{network.stdout_lines}}
+    tags: ipv6
+
+  - name: cat sysctl file
+    command: cat /etc/sysctl.conf
+    register: sysctl
+    tags: ipv6
+
+  - name: show sysctl file
+    debug: msg={{sysctl.stdout_lines}}
+    tags: ipv6
+
+  - name: disable ip6tables
+    command: chkconfig ip6tables off
+    tags: ipv6
+
+  ##########     Change ssh Config     ##########
+  - name: changes into sshd_config   
+    copy: 
+      src: '{{path_to_ssh}}'
+      dest: /etc/ssh/sshd_config
+      backup: yes
+    tags: ssh
+
+  - name: sshd restart
+    command: service sshd restart
+    tags: ssh
+
+  - name: status ssh
+    command: service sshd status
+    register: ssh_result
+    tags: ssh
+
+  - name: show ssh status
+    debug: msg={{ssh_result.stdout_lines}}
+    tags: ssh
+
+  ##########     Add nodev to Partitions     ###########
+  - name: add nodev option to tmpfs local partitions
+    lineinfile:
+      dest: /etc/fstab
+      regexp: '^tmpfs'
+      line: 'tmpfs                   /dev/shm                tmpfs    defaults,nodev,nosuid,noexec        0 0'
+      backup: yes
+      backrefs: yes
+    tags: partition
+
+  - name: add ro to /boot local partition
+    command: sed -i -e "s/\/boot.*/\/boot                   xfs     defaults,ro        0 0/" /etc/fstab
+    tags: partition
+
+  - name: cat partition file
+    command: cat /etc/fstab 
+    register: partition_result
+    tags: partition
+
+  - name: show partition file
+    debug: msg={{partition_result.stdout_lines}}
+    tags: partition
+
+  ##########     GRUB Password     ##########
+  - name: grub command
+    shell: >
+           echo -e "{{grub_pass}}\n{{grub_pass}}" |
+           grub-md5-crypt 2> /dev/null |
+           tail --lines=1 > /boot/grub/gen_hash_pass
+    tags: grub 
+  
+  - name: append password --md5 in the beginning of the line 
+    shell: sed -i -e 's/^/password --md5 /' /boot/grub/gen_hash_pass
+    tags: grub
+    
+  - name: delete line if password --md5 was inserted before in grub.conf file
+    command: sed -i '/password --md5/d' /boot/grub/grub.conf
+    tags: grub
+
+  - name: take content of password file into grub.config after pattern=hiddenmenu line
+    command: sed -i '/hiddenmenu/r /boot/grub/gen_hash_pass' /boot/grub/grub.conf
+    tags: grub
+
+  - name: cat grub file
+    command: cat /boot/grub/grub.conf
+    register: grub_result
+    tags: grub
+
+  - name: show grub file
+    debug: msg={{grub_result.stdout_lines}}
+    tags: grub
+
+  ##########     SELinux Setting     ##########
+  - name: change selinux parameters
+    lineinfile:
+      dest: /etc/selinux/config
+      regexp: "{{item.regex}}"
+      line: "{{item.line}}"
+      backrefs: yes
+    with_items: 
+      - { regex: '^SELINUX=' ,     line: 'SELINUX=permissive' }
+      - { regex: '^SELINUXTYPE=' , line: 'SELINUXTYPE=targeted' }
+    tags: selinux
+
+  - name: cat selinux file  
+    command: cat /etc/selinux/config
+    register: selinux_result
+    tags: selinux
+
+  - name: show selinux file
+    debug: msg={{selinux_result.stdout_lines}}
+    tags: selinux
+
+  ##########     Iptables Setting     ###########   
+  - name: iptables rules
+    command: iptables -A INPUT -p "{{ item.protocol }}" -s "{{ item.source }}" -j ACCEPT
+    with_items: 
+      - { protocol: tcp, source: 172.25.67.0/24 }
+      - { protocol: udp, source: 172.25.67.0/24 }
+      - { protocol: tcp, source: 172.25.230.0/24 }
+      - { protocol: udp, source: 172.25.230.0/24 }
+    tags: iptables
+
+  - name: iptables multi-port rules  
+    command: iptables -A INPUT -p tcp --match multiport --dports 7001,8001,9001,7777,8888 -s "{{item}}" -j ACCEPT
+    with_items:  
+      - 172.25.6.0/24
+      - 172.25.230.0/24
+    tags: iptables
+  
+  - name: restart iptables service
+    command: service iptables restart
+    tags: iptables
+
+  - name: reload iptables service
+    command: service iptables reload
+    tags: iptables
+  
+  - name: save iptables
+    command: service iptables save
+    tags: iptables
+  
+  - name: enable iptables service
+    command: chkconfig iptables on
+    tags: iptables
+  
+  - name: status of iptables
+    command: service iptables status
+    tags: iptables
+
+  ##########     Uninstall Unwanted Services     ##########
+  - name: erase unwanted services
+    shell: yum erase "{{item}}"
+    with_items:
+      - setroubleshoot
+      - inetd 
+      - xinetd 
+      - ypserv 
+      - tftp-server 
+      - telnet-server 
+      - rsh-server 
+      - anacron 
+      - haldaemon 
+      - messagebus  
+      - microcode_ctl 
+      - hidd  
+      - apmd 
+      - autofs 
+      - avahi-daemon 
+      - bluetooth 
+      - cups 
+      - firstboot 
+      - gpm 
+      - hplip 
+      - isdn 
+      - kdump 
+      - kudzu 
+      - mcstrans 
+      - mdmonitor 
+      - pcscd 
+      - readahead_early 
+      - readahead_later 
+      - rhnsd 
+      - xfs 
+      - irqbalance 
+      - smartd 
+      - irda 
+      - irda-utils 
+      - rawdevices
+      - atd
+    tags: services
+
+  ##########     USB Parameters     ##########
+  - name: touch a file to set usb parameters
+    file:
+      path: /etc/modprobe.d/no-usb
+      state: touch
+    tags: usb
+
+  - name: write into file to set kernel parameters
+    lineinfile:
+      path: /etc/modprobe.d/no-usb
+      line: install usb-storage /bin/true
+    tags: usb
+
+  - name: cat usb file
+    command: cat /etc/modprobe.d/no-usb
+    register: usb_result
+    tags: usb
+
+  - name: show usb file
+    debug: msg={{usb_result.stdout_lines}}
+    tags: usb
+

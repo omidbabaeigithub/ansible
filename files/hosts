@@ -1,0 +1,46 @@
+127.0.0.1	localhost.localdomain		localhost
+
+# DEV Servers 
+172.25.67.57	iss2vldwcc01.msc-dc.local	iss2vldwcc01
+172.25.67.58	iss2vldwcp01.msc-dc.local	iss2vldwcp01
+172.25.67.61	iss2vldosb01.msc-dc.local	iss2vldosb01
+172.25.67.62	iss2vldoag01.msc-dc.local	iss2vldoag01
+172.25.67.63	iss2vldobi01.msc-dc.local	iss2vldobi01
+172.25.67.64	iss2vldobi02.msc-dc.local	iss2vldobi02
+172.25.67.67	iss2vldoaam01.msc-dc.local	iss2vldoaam01
+172.25.67.68	iss2vldovd01.msc-dc.local	iss2vldovd01
+172.25.67.69	iss2vldods01.msc-dc.local	iss2vldods01
+172.25.67.70	iss2vldoam01.msc-dc.local	iss2vldoam01
+172.25.67.80	iss2vldadf02.msc-dc.local	iss2vldadf02
+
+# PROD Servers
+172.25.67.54	iss2vlpbpm01.msc-dc.local	iss2vlpbpm01
+172.25.67.55	iss2vlpbpm02.msc-dc.local	iss2vlpbpm02
+172.25.67.56	iss2vlpbpm03.msc-dc.local	iss2vlpbpm03
+172.25.67.59	iss2vlposr01.msc-dc.local	iss2vlposr01
+172.25.67.60	iss2vlposr02.msc-dc.local	iss2vlposr02
+172.25.67.65	iss2vlpwcc01.msc-dc.local	iss2vlpwcc01
+172.25.67.66	iss2vlpwcc02.msc-dc.local	iss2vlpwcc02
+172.25.67.71	iss2vlpnas01.msc-dc.local	iss2vlpnas01
+172.25.67.72	iss2vlpwcp01.msc-dc.local	iss2vlpwcp01
+172.25.67.73	iss2vlpwcp02.msc-dc.local	iss2vlpwcp02
+172.25.67.74	iss2vlpobi01.msc-dc.local	iss2vlpobi01
+172.25.67.75	iss2vlpobi02.msc-dc.local	iss2vlpobi02
+172.25.67.78	iss2vlpods01.msc-dc.local	iss2vlpods01
+172.25.67.79	iss2vlpods02.msc-dc.local	iss2vlpods02
+172.25.67.81	iss2vlpoam01.msc-dc.local	iss2vlpoam01
+172.25.67.82	iss2vlpoam02.msc-dc.local	iss2vlpoam02
+172.25.67.83	iss2vlpoig01.msc-dc.local	iss2vlpoig01
+172.25.67.84	iss2vlpoig02.msc-dc.local	iss2vlpoig02
+172.25.67.34	iss2vlpoem01.msc-dc.local 	iss2vlpoem01
+
+# Yum Repository
+172.25.68.50    yum.msc.ir
+
+# Load Balancer
+172.25.68.50    eis.msc.ir
+172.25.68.50    ecm.msc.ir
+172.25.67.65    ecmidc.msc.ir
+172.25.67.71    filestore.msc.ir
+172.25.67.68    idstoredev.msc.ir
+

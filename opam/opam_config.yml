@@ -1,0 +1,5 @@
+---
+- hosts: "{{hostname}}"
+  tasks: 
+  - name: Add Target
+    script: /home/oracle/ansible/opam/run_opam_command.sh

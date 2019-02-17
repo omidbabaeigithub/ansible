@@ -1,0 +1,7 @@
+[msc_ol_latest]
+name=MSC Repository For Oracle Linux
+baseurl=http://yum.msc.ir/repo/OracleLinux/ol6/ol6_latest
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-oracle
+gpgcheck=1
+enabled=1
+

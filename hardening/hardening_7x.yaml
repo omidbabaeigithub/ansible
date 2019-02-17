@@ -1,0 +1,445 @@
+--- 
+- hosts: '{{host_name}}'
+  become: yes  
+  tasks:
+     
+  ##########     Update Repository       #########
+#  - name: append a host
+#    blockinfile:
+#      path: /etc/hosts
+#      block: |
+#        # Yum Repository
+#        172.25.68.50    yum.msc.ir
+#        # Load Balancer
+#        172.25.68.50    eis.msc.ir
+#        172.25.68.50    ecm.msc.ir
+#        172.25.67.65    ecmidc.msc.ir
+#        172.25.67.71    filestore.msc.ir
+#      backup: yes
+#    tags: repo
+#
+#  - name: copy msc.repo to remote servers
+#    copy:
+#      src: "{{path_to_repo}}"
+#      dest: /etc/yum.repos.d/msc_7x.repo
+#      backup: yes
+#    tags: repo
+#
+#  - name: update repo
+#    command: yum update
+#    tags: repo  
+#
+#  - name: upgrade repo
+#    command: yum upgrade
+#    tags: repo
+#
+  ##########     Disable Ctrl+Alt+Del     ##########
+  - name: disable ctrl+alt+del
+    shell: systemctl mask ctrl-alt-del.target
+    tags: CtrlAltDel
+   
+  - name: reload daemon service
+    shell: systemctl daemon-reload
+    tags: CtrlAltDel
+
+  ##########     Check UID=0     ##########
+  - name: ensure no user have UID=0
+    command: awk -F{{':'}} '($3 == "0"){print}' /etc/passwd
+    register: result
+    tags: uid
+
+  - name: show result
+    debug: msg={{result.stdout_lines}}
+    tags: uid
+
+  ##########     Remove X Window     ##########
+  - name: remove 'x windows' package group 
+    shell: yum groupremove "X Window System"
+    register: x_result
+    tags: xwindow
+
+  - name: show result remove x window
+    debug: msg={{x_result.stdout_lines}}
+    tags: xwindow
+
+  ##########    Logwatch Service     ##########
+  - name: install logwatch
+    shell: yum install logwatch
+    register: logwatch_result
+    tags: logwatch
+
+  - name: show install logwatch
+    debug: msg={{logwatch_result.stdout_lines}}
+    tags: logwatch
+
+  - name: start rsyslog
+    command: systemctl start rsyslog 
+    tags: logwatch
+
+  - name: enable rsyslog
+    command: systemctl enable rsyslog
+    tags: logwatch
+
+  - name: status rsyslog
+    command: systemctl status rsyslog
+    register: rsyslog_result
+    tags: logwatch
+
+  - name: show rsyslog status
+    debug: msg={{rsyslog_result.stdout_lines}}
+    tags: logwatch
+ 
+  ##########     Psacct Service    ##########
+  - name: install psacct
+    shell: yum install psacct
+    register: psacct_result
+    tags: psacct
+
+  - name: show install psacct
+    debug: msg={{psacct_result.stdout_lines}}
+    tags: psacct
+
+  - name: start psacct
+    command: systemctl start psacct.service
+    tags: psacct
+
+  - name: enable psacct
+    command: systemctl enable psacct.service
+    tags: psacct
+
+  - name: status psacct
+    command: systemctl status psacct.service
+    register: psacct_result
+    tags: psacct
+
+  - name: show psacct status
+    debug: msg={{psacct_result.stdout_lines}}
+    tags: psacct
+
+  ##########     Kernel Parameters     ##########
+  - name: touch a file to set kernel parameters
+    file: 
+      path: /etc/sysctl.d/98-hardening.conf 
+      state: touch
+    tags: kernel
+
+  - name: write into file to set kernel parameters  
+    blockinfile:
+       dest: /etc/sysctl.d/98-hardening.conf
+       block: | 
+         net.ipv4.conf.all.rp_filter=1
+         net.ipv4.conf.all.accept_source_route=0
+         net.ipv4.icmp_echo_ignore_broadcasts=1
+         net.ipv4.icmp_ignore_bogus_error_messages=1
+         kernel.exec-shield=1
+         kernel.randomize_va_space=1
+    tags: kernel
+
+  - name: cat kernel file
+    command: cat /etc/sysctl.d/98-hardening.conf
+    register: kernel_result
+    tags: kernel
+
+  - name: show kernel file
+    debug: msg={{kernel_result.stdout_lines}}
+    tags: kernel
+
+  ##########     IpV6     ##########
+  - name: touch a file to disable IpV6
+    file: 
+      path: /etc/sysctl.d/99-disable-ipv6.conf 
+      state: touch
+    tags: ipv6
+
+  - name: write into file to disable Ipv6
+    blockinfile:
+      dest: /etc/sysctl.d/99-disable-ipv6.conf
+      block: |
+        net.ipv6.conf.all.disable_ipv6=1
+        net.ipv6.conf.default.disable_ipv6=1
+    tags: ipv6 
+
+  - name: cat ipv6 file
+    command: cat /etc/sysctl.d/99-disable-ipv6.conf
+    register: ipv6
+    tags: ipv6
+
+  - name: show ipv6 file
+    debug: msg={{ipv6.stdout_lines}}
+    tags: ipv6
+
+  - name: sysctl command
+    command: sysctl -p
+    tags: ipv6
+
+  ##########     Change ssh Config     ##########
+  - name: changes into sshd_config   
+    copy: 
+      src: "{{path_to_ssh}}"
+      dest: /etc/ssh/sshd_config
+      backup: yes
+    tags: ssh
+
+  - name: sshd restart
+    command: systemctl restart sshd
+    tags: ssh
+
+  - name: status ssh
+    command: systemctl status sshd
+    register: ssh_result
+    tags: ssh
+
+  - name: show ssh status
+    debug: msg={{ssh_result.stdout_lines}}
+    tags: ssh
+
+  ##########     Add nodev to Partitions     ###########
+  - name: add nodev option to /u01 local partitions
+    lineinfile:
+      dest: /etc/fstab
+      regexp: '^/dev/mapper/vg00-lv_u01 /u01'
+      line: '/dev/mapper/vg00-lv_u01 /u01                    xfs     defaults,nodev        0 0'
+      backrefs: yes
+    tags: partition
+
+  - name: add ro to /boot local partition
+    command: sed -i -e "s/\/boot.*/\/boot                   xfs     defaults,ro        0 0/" /etc/fstab
+    tags: partition 
+
+  - name: cat partition file
+    command: cat /etc/fstab
+    register: partition_result
+    tags: partition
+
+  - name: show partition file
+    debug: msg={{partition_result.stdout_lines}}
+    tags: partition
+
+  ##########     Protect GRUB2 Bootloader with Password     ##########
+  - name: make a backup from 40_custom file
+    command: cp /etc/grub.d/40_custom /etc/grub.d/40_custom.backup
+    tags: grub
+
+  - name: make a hash password and append it to 40_custom file
+    shell: >
+           echo -e "{{grub_pass}}\n{{grub_pass}}\n" |
+           grub2-mkpasswd-pbkdf2 2> /dev/null | 
+           tail --lines=1 | 
+           sed 's/^.*grub/set superusers="root"\npassword_pbkdf2 root grub/' >> /etc/grub.d/40_custom
+    tags: grub
+
+  - name: make grub.cfg file readable
+    command: mount -o rw,remount /dev/sda1
+    tags: grub
+
+  - name: make a backup from grub.cfg file
+    command: cp /boot/grub2/grub.cfg /boot/grub2/grub.cfg.backup
+    tags: grub
+
+  - name: reconfig grub.cfg file
+    command: grub2-mkconfig -o /boot/grub2/grub.cfg
+    tags: grub
+
+  ##########     Completely Locking Menu Entries     ##########
+#  - name: remove –unrestricted
+#    command: 'sed -i "/^CLASS=/s/ --unrestricted//" /etc/grub.d/10_linux'
+#    tags: grub
+
+#  - name: set a password for the root user
+#    command: 'echo -e "{{grub_pass}}\n{{grub_pass}}\n" | grub2-setpassword'
+#    tags: grub
+
+#  - name: recreate the grub config
+#    command: 'grub2-mkconfig -o /boot/grub2/grub.cfg'
+#    tags: grub
+
+  ##########     SELinux Setting     ##########
+  - name: change selinux parameters
+    lineinfile:
+      dest: /etc/selinux/config
+      regexp: "{{item.regex}}"
+      line: "{{item.line}}"
+      backrefs: yes
+    with_items:
+      - { regex: '^SELINUX=' ,     line: 'SELINUX=permissive' }
+      - { regex: '^SELINUXTYPE=' , line: 'SELINUXTYPE=targeted' }
+    tags: selinux
+
+  - name: cat selinux file
+    command: cat /etc/selinux/config
+    register: selinux_result
+    tags: selinux
+
+  - name: show selinux file
+    debug: msg={{selinux_result.stdout_lines}}
+    tags: selinux
+
+  ##########    Firewalld Setting     ##########
+  # Start firewalld
+  - name: start and enable firewalld
+    service:
+      name: firewalld
+      state: started
+      enabled: yes
+    tags: firewalld
+
+  # Status firewalld
+  - name: status of firewalld
+    command: systemctl status firewalld
+    register: status_firewalld
+    tags: firewalld
+ 
+  - name: show status_firewalld
+    debug: msg={{status_firewalld.stdout_lines}}    
+    tags: firewalld
+
+  # Set default zone
+  - name: set default zone
+    command: firewall-cmd --set-default-zone={{default_zone}}
+    tags: firewalld
+
+  # Get default zone
+  - name: get default zone
+    command: firewall-cmd --get-default-zone
+    register: get_zone
+    tags: firewalld
+
+  - name: show get zone
+    debug: msg={{get_zone.stdout_lines}}
+    tags: firewalld
+
+  # Public rules
+  - name: add public service and source
+    when: default_zone=="public"
+    firewalld:
+      service: "{{item}}"
+      zone: public
+      permanent: true
+      state: enabled
+    with_items:
+      - http
+      - https
+    tags: firewalld
+ 
+  - name: add rich rule to public zone 
+    when: default_zone=="public"    
+    command: 
+      firewall-cmd --permanent --zone=public --add-rich-rule='rule family="ipv4" source address="172.25.230.0/24" port protocol="tcp" port="{{item}}" accept'
+    with_items: 
+      - 22
+      - 7001
+    tags: firewalld
+
+  - name: add rich rule to public
+    when: default_zone=="public"
+    command:
+      firewall-cmd --permanent --zone=public --add-rich-rule='rule family="ipv4" source address="172.25.6.0/24" accept'
+    tags: firewalld
+
+  # Internal rules
+  - name: add rich rule to internal
+    when: default_zone=="internal"    
+    command: 
+      firewall-cmd --permanent --zone=internal --add-rich-rule='rule family="ipv4" source address="172.25.6.0/24" port protocol="tcp" port="{{item}}" accept'
+    with_items:
+      - 7001
+      - 8001
+      - 9001
+      - 7777
+      - 8888
+    tags: firewalld
+
+  - name: add rich rule to internal 
+    when: default_zone=="internal"
+    command:
+      firewall-cmd --permanent --zone=internal --add-rich-rule='rule family="ipv4" source address="{{item}}" accept'
+    with_items: 
+      - 172.25.67.0/24
+      - 172.25.230.0/24
+    tags: firewalld
+
+  # Reload
+  - name: reload firewalld
+    command: firewall-cmd --reload
+    register: reload_firewalld
+    tags: firewalld
+
+  - name: show get zone
+    debug: msg={{reload_firewalld.stdout_lines}}
+    tags: firewalld
+
+  # List setting
+  - name: list status of default zone
+    command: firewall-cmd --zone={{default_zone}} --list-all
+    register: list_zone
+    tags: firewalld
+
+  - name: show zone list
+    debug:
+      msg={{list_zone.stdout_lines}}
+    tags: firewalld
+ 
+  ##########     Uninstall Unwanted Services     ##########
+  - name: erase unwanted services
+    shell: yum erase "{{item}}"
+    with_items:
+      - setroubleshoot
+      - inetd 
+      - xinetd 
+      - ypserv 
+      - tftp-server 
+      - telnet-server 
+      - rsh-server 
+      - anacron 
+      - haldaemon 
+      - messagebus  
+      - microcode_ctl 
+      - hidd  
+      - apmd 
+      - autofs 
+      - avahi-daemon 
+      - bluetooth 
+      - cups 
+      - firstboot 
+      - gpm 
+      - hplip 
+      - isdn 
+      - kdump 
+      - kudzu 
+      - mcstrans 
+      - mdmonitor 
+      - pcscd 
+      - readahead_early 
+      - readahead_later 
+      - rhnsd 
+      - xfs 
+      - irqbalance 
+      - smartd 
+      - irda 
+      - irda-utils 
+      - rawdevices
+      - atd
+    tags: services  
+
+  ##########     USB Parameters     ##########
+  - name: touch a file to set usb parameters
+    file:
+      path: /etc/modprobe.d/no-usb
+      state: touch
+    tags: usb
+  
+  - name: write into file to set kernel parameters
+    lineinfile:
+      path: /etc/modprobe.d/no-usb
+      line: install usb-storage /bin/true     
+    tags: usb
+ 
+  - name: cat usb file
+    command: cat /etc/modprobe.d/no-usb
+    register: usb_result
+    tags: usb
+
+  - name: show usb file
+    debug: msg={{usb_result.stdout_lines}}
+    tags: usb
+   

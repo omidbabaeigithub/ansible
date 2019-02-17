@@ -1,0 +1,4 @@
+#!/bin/bash
+declare -A hashmap
+hashmap["adf"]="Ansible"
+echo "${hashmap["adf"]}"
